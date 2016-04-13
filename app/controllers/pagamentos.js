@@ -1,9 +1,4 @@
 module.exports = function(app) {
-    app.get("/pagamentos",function(req, res) {
-
-      res.send('ok');
-    });
-
     app.post("/pagamentos/pagamento",function(req, res) {
       var pagamento = req.body;
       console.log('processando pagamento...');
@@ -13,8 +8,16 @@ module.exports = function(app) {
 
       pagamento.status = "CRIADO";
       pagamento.data =  new Date;
-      pagamentoDao.salva(pagamento);
 
-      res.json(pagamento);
+      pagamentoDao.salva(pagamento, function(exception, result){
+        console.log('pagamento criado: ' + result);
+
+        res.location('/pagamentos/pagamento/' + result.insertId);
+        pagamento.id = result.insertId;
+
+        res.status(201).json(pagamento);
+      });
+
     });
+
 }
