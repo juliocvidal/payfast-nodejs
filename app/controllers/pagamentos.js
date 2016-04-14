@@ -1,3 +1,7 @@
+const PAGAMENTO_CRIADO = "CRIADO";
+const PAGAMENTO_CONFIRMADO = "CONFIRMADO";
+const PAGAMENTO_CANCELADO = "CANCELADO";
+
 module.exports = function(app) {
     app.post("/pagamentos/pagamento",function(req, res) {
       var pagamento = req.body;
@@ -20,7 +24,7 @@ module.exports = function(app) {
       var connection = app.infra.connectionFactory();
       var pagamentoDao = new app.infra.PagamentoDao(connection);
 
-      pagamento.status = "CRIADO";
+      pagamento.status = PAGAMENTO_CRIADO;
       pagamento.data =  new Date;
 
       pagamentoDao.salva(pagamento, function(exception, result){
@@ -29,7 +33,23 @@ module.exports = function(app) {
         res.location('/pagamentos/pagamento/' + result.insertId);
         pagamento.id = result.insertId;
 
-        res.status(201).json(pagamento);
+        var response = {
+          dados_do_pagamento: pagamento,
+          links: [
+                  {
+                    href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
+                    rel: "confirmar",
+                    method: "PUT"
+                  },
+                  {
+                    href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
+                    rel: "cancelar",
+                    method: "DELETE"
+                  }
+                ]
+        }
+
+        res.status(201).json(response);
       });
 
     });
