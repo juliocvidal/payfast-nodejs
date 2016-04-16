@@ -4,11 +4,12 @@ const PAGAMENTO_CANCELADO = "CANCELADO";
 
 module.exports = function(app) {
     app.post("/pagamentos/pagamento",function(req, res) {
-      var pagamento = req.body;
+      var body = req.body;
+      var pagamento = body['pagamento'];
 
-      req.assert("forma_de_pagamento", "Forma de pagamento é obrigatória.").notEmpty();
-      req.assert("valor", "Valor é obrigatório e deve ser um decimal.").notEmpty().isFloat();
-      req.assert("moeda", "Moeda é obrigatória e deve ter 3 caracteres").notEmpty().len(3,3);
+      req.assert("pagamento.forma_de_pagamento", "Forma de pagamento é obrigatória.").notEmpty();
+      req.assert("pagamento.valor", "Valor é obrigatório e deve ser um decimal.").notEmpty().isFloat();
+      req.assert("pagamento.moeda", "Moeda é obrigatória e deve ter 3 caracteres").notEmpty().len(3,3);
 
       var errors = req.validationErrors();
 
@@ -28,28 +29,67 @@ module.exports = function(app) {
       pagamento.data =  new Date;
 
       pagamentoDao.salva(pagamento, function(exception, result){
+        if (exception){
+          console.log(exception);
+        }
+
         console.log('pagamento criado: ' + result);
 
         res.location('/pagamentos/pagamento/' + result.insertId);
         pagamento.id = result.insertId;
 
-        var response = {
-          dados_do_pagamento: pagamento,
-          links: [
-                  {
-                    href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
-                    rel: "confirmar",
-                    method: "PUT"
-                  },
-                  {
-                    href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
-                    rel: "cancelar",
-                    method: "DELETE"
-                  }
-                ]
-        }
+        if (pagamento.forma_de_pagamento == 'cartao'){
+          console.log('pagamento com cartão');
 
-        res.status(201).json(response);
+          var cartoesClient = new app.servicos.CartoesClient();
+          cartoesClient.autoriza(body['cartao'], function (err, request, response, retorno) {
+            if (err){
+              console.log("Erro ao consultar serviço de cartões.");
+              res.status(400).send(err);
+              return;
+            }
+
+            console.log('Retorno do servico de cartoes: %j', retorno);
+
+            var response = {
+              dados_do_pagamento: pagamento,
+              cartao : retorno,
+              links: [
+                      {
+                        href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
+                        rel: "confirmar",
+                        method: "PUT"
+                      },
+                      {
+                        href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
+                        rel: "cancelar",
+                        method: "DELETE"
+                      }
+                    ]
+            }
+
+            res.status(201).json(response);
+          });
+
+        } else {
+          var response = {
+            dados_do_pagamento: pagamento,
+            links: [
+                    {
+                      href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
+                      rel: "confirmar",
+                      method: "PUT"
+                    },
+                    {
+                      href: "http://localhost:3000/pagamentos/pagamento/" + pagamento.id,
+                      rel: "cancelar",
+                      method: "DELETE"
+                    }
+                  ]
+          }
+
+          res.status(201).json(response);
+        }
       });
 
     });
