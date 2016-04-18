@@ -63,11 +63,12 @@ module.exports = function(app) {
 
         console.log('pagamento criado: ' + result);
 
-        res.location('/pagamentos/pagamento/' + result.insertId);
-        pagamento.id = result.insertId;
+        var id = result.insertId
+        res.location('/pagamentos/pagamento/' + id);
+        pagamento.id = id;
 
         var cache = app.infra.memcachedClient();
-        cache.set('pagamento-' + result.insertId, result, 100000, function (err) {
+        cache.set('pagamento-' + id, result, 100000, function (err) {
            console.log('nova chave: pagamento-' + id)
          });
 
