@@ -2,7 +2,35 @@ const PAGAMENTO_CRIADO = "CRIADO";
 const PAGAMENTO_CONFIRMADO = "CONFIRMADO";
 const PAGAMENTO_CANCELADO = "CANCELADO";
 
+
+
 module.exports = function(app) {
+    app.get("/pagamentos/pagamento/:id",function(req, res) {
+      var id = req.params.id;
+      var cache = app.infra.memcachedClient();
+
+      console.log('id: ' + id);
+
+      cache.get('pagamento-' + id, function (err, data) {
+
+        if (err || !data){
+
+          var connection = app.infra.connectionFactory();
+          var pagamentoDao = new app.infra.PagamentoDao(connection);
+
+          pagamentoDao.buscaPorId(id, function(exception, resultado){
+
+            cache.set('pagamento-' + id, resultado, 100000, function (err) {
+               console.log('nova chave: pagamento-' + id)
+             });
+            res.status(200).json(resultado);
+          });
+        } else {
+          res.status(200).json(data);
+        }
+      });
+    });
+
     app.post("/pagamentos/pagamento",function(req, res) {
       var body = req.body;
       var pagamento = body['pagamento'];
@@ -37,6 +65,11 @@ module.exports = function(app) {
 
         res.location('/pagamentos/pagamento/' + result.insertId);
         pagamento.id = result.insertId;
+
+        var cache = app.infra.memcachedClient();
+        cache.set('pagamento-' + result.insertId, result, 100000, function (err) {
+           console.log('nova chave: pagamento-' + id)
+         });
 
         if (pagamento.forma_de_pagamento == 'cartao'){
           console.log('pagamento com cartão');
