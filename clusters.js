@@ -1,9 +1,9 @@
 var cluster = require ('cluster');
-var os = require('os');
+var os = require ('os');
 
 const CPUS = os.cpus();
 if (cluster.isMaster) {
-  CPUS.forEach(() => cluster.fork());
+  CPUS.forEach(function(){ cluster.fork()});
   cluster.on("listening", worker => {
     console.log("cluster %d conectado", worker.process.pid);
   });
